@@ -1,4 +1,4 @@
-(function(buster, createContext, pluginModule) {
+(function(buster, context) {
 "use strict";
 
 var assert, refute, fail, sentinel;
@@ -9,11 +9,15 @@ fail = buster.assertions.fail;
 
 sentinel = {};
 
+function createContext(spec) {
+	return context(spec, null, { require: require });
+}
+
 buster.testCase('context', {
 
 	'array of specs': {
 		'should be merged': function(done) {
-			createContext([{ a: 1 }, { b: 2 }], null, { require: require }).then(
+			createContext([{ a: 1 }, { b: 2 }]).then(
 				function(context) {
 					assert.equals(context.a, 1);
 					assert.equals(context.b, 2);
@@ -23,26 +27,24 @@ buster.testCase('context', {
 		},
 
 		'should allow overriding': function(done) {
-			createContext([{ a: 1 }, { a: 2 }], null, { require: require }).then(
+			createContext([{ a: 1 }, { a: 2 }]).then(
 				function(context) {
 					assert.equals(context.a, 2);
 				},
 				fail
 			).then(done, done);
-
 		}
 	},
 
 	'initializers': {
 		'should execute when context is created': function(done) {
 			var executed = false;
-			var context = createContext({}, null, {
+			context({}, null, {
 				require: require,
-				contextHandlers: {
-					init: function() { executed = true; }
-				}
-			});
-			context.then(
+				initializers: [
+					function() { executed = true; }
+				]
+			}).then(
 				function() {
 					assert(executed);
 				},
@@ -51,70 +53,12 @@ buster.testCase('context', {
 		}
 	},
 
-	'destroyers': {
-		'should execute when context is destroyed': function(done) {
-			var executed = false;
-			createContext({}, null, {
-				require: require,
-				contextHandlers: {
-					destroy: function() { executed = true; }
-				}
-			}).then(
-				function(context) {
-					refute(executed);
-
-					context.destroy().then(
-						function() {
-							assert(executed);
-						}
-					);
-				}
-			).then(done, done);
-		}
-	},
-
-	'initializers and destroyers': {
-		'should execute in correct order': function(done) {
-		var init, destroy;
-			createContext({}, null, {
-				require: require,
-				contextHandlers: {
-					init: function() {
-						refute(init);
-						refute(destroy);
-						init = true;
-					},
-					destroy: function() {
-						assert(init);
-						refute(destroy);
-						destroy = true;
-					}
-				}
-			}).then(
-				function(context) {
-					// Should not have executed yet
-					refute(destroy);
-
-					return context.destroy().then(
-						function() {
-							assert(destroy);
-						}
-					);
-				}
-			).then(done, done);
-		}
-	},
-
 	'lifecycle': {
 		'destroy': {
-			'tearDown': function() {
-				delete pluginModule.wire$plugin;
-			},
-
 			'should propagate errors if component destroy fails': function(done) {
-				pluginModule.wire$plugin = function() {
+				function plugin() {
 					return { proxies: [proxy] };
-				};
+				}
 
 				function proxy(p) {
 					p.destroy = function() { throw sentinel; };
@@ -122,16 +66,141 @@ buster.testCase('context', {
 
 				createContext({
 					a: { literal: { name: 'a' } },
-					plugin: { module: './fixtures/object' }
-				}, null, { require: require }
-				).then(function(context) {
+					plugins: [plugin]
+				}).then(function(context) {
 					return context.destroy();
 				}).then(
 					fail,
 					function(e) {
 						assert.same(e, sentinel);
 					}
-				).always(done);
+				).then(done, done);
+			},
+
+			'child': {
+				'should be destroyed when parent is destroyed': function(done) {
+					createContext({ a: 0 }).then(function(parent) {
+						return parent.wire({ a: 1 }).then(function(child) {
+							return child.wire({ a: 2 }).then(function(grandchild) {
+
+								assert.equals(parent.a, 0);
+								assert.equals(child.a, 1);
+								assert.equals(grandchild.a, 2);
+
+								return child.destroy().then(function() {
+									assert.equals(grandchild.a, 0);
+								});
+
+							});
+						});
+					}).then(done, done);
+				}
+			}
+		}
+	},
+
+	'plugin api': {
+		'addInstance': {
+			'should add instance by name': function(done) {
+				function plugin() {
+					return {
+						context: {
+							initialize: function(resolver, wire) {
+								wire.addInstance(sentinel, 'instance');
+								resolver.resolve();
+							}
+						}
+					}
+				}
+
+				createContext({
+					plugins: [plugin],
+					test: { $ref: 'instance' }
+				}).then(
+					function(context) {
+						assert.same(context.test, sentinel);
+					},
+					fail
+				).then(done, done);
+			},
+
+			'should not process instance lifecycle': function(done) {
+				var spy = this.spy(function(resolver) {
+					resolver.resolve();
+				});
+
+				function plugin() {
+					return {
+						context: {
+							initialize: function(resolver, wire) {
+								wire.addInstance(sentinel, 'instance');
+								resolver.resolve();
+							}
+						},
+						initialize: spy
+					}
+				}
+
+				createContext({
+					plugins: [plugin]
+				}).then(
+					function() {
+						refute.called(spy);
+					},
+					fail
+				).then(done, done);
+			}
+		},
+
+		'addComponent': {
+			'should add instance by name': function(done) {
+				function plugin() {
+					return {
+						context: {
+							initialize: function(resolver, wire) {
+								wire.addComponent(1, 'instance');
+								resolver.resolve();
+							}
+						}
+					}
+				}
+
+				createContext({
+					plugins: [plugin],
+					test: { $ref: 'instance' }
+				}).then(
+					function(context) {
+						assert.equals(context.test, 1);
+					},
+					fail
+				).then(done, done);
+			},
+
+			'should process component lifecycle': function(done) {
+				var spy = this.spy(function(resolver) {
+					resolver.resolve();
+				});
+
+				function plugin() {
+					return {
+						context: {
+							initialize: function(resolver, wire) {
+								wire.addComponent({}, 'instance');
+								resolver.resolve();
+							}
+						},
+						initialize: spy
+					}
+				}
+
+				createContext({
+					plugins: [plugin]
+				}).then(
+					function() {
+						assert.called(spy);
+					},
+					fail
+				).then(done, done);
 			}
 		}
 	}
@@ -139,6 +208,5 @@ buster.testCase('context', {
 
 })(
 	require('buster'),
-	require('../../lib/context'),
-	require('./fixtures/object')
+	require('../../lib/context')
 );

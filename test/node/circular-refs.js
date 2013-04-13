@@ -36,7 +36,7 @@ buster.testCase('circular-refs', {
 
 	'should resolve circular deps after init has finished': function(done) {
 		var promise = timeout(wire({
-			plugin: { module: './test/node/fixtures/object' },
+			plugins: [{ module: './test/node/fixtures/object' }],
 			component1: {
 				literal: {},
 				shouldResolve: 'component2'
@@ -53,16 +53,14 @@ buster.testCase('circular-refs', {
 				assert.defined(context.component2);
 			},
 			fail
-		).always(done);
+		).then(done, done);
 	},
 
-	'should not resolve circular deps before init has finished': function(done) {
-		var clock, promise;
-
-		clock = this.useFakeTimers();
+	'should not resolve circular deps before init has finished': function() {
+		var promise;
 
 		promise = wire({
-			plugin: { module: './test/node/fixtures/object' },
+			plugins: [{ module: './test/node/fixtures/object' }],
 			component1: {
 				literal: { name: '1' },
 				shouldNotResolve: 'component2'
@@ -71,20 +69,14 @@ buster.testCase('circular-refs', {
 				literal: { name: '2' },
 				shouldNotResolve: 'component1'
 			}
-		});
+		}, { refCycleTimeout: 100 });
 
-		// Force clock advancement
-		clock.tick(1e4);
-
-		promise.then(
+		return promise.then(
 			fail,
 			function() {
 				assert(true);
 			}
-		).always(function() {
-			clock.restore();
-			done();
-		});
+		);
 	}
 
 });

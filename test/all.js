@@ -12,41 +12,11 @@
 	doh.registerUrl('amd/module', '../../amd/module.html' + hash);
 	doh.registerUrl('amd/plugin', '../../amd/plugin.html' + hash);
 
-	// Core
-	doh.registerUrl('nested1', '../../nested1.html' + hash);
-	doh.registerUrl('nested2', '../../nested2.html' + hash);
-	doh.registerUrl('module-factory', '../../module.html' + hash);
-	doh.registerUrl('create-constructor', '../../create-constructor.html' + hash);
-	doh.registerUrl('prototype-factory', '../../prototype1.html' + hash);
-	// create with raw constructors/functions
-	doh.registerUrl('plain-constructors', '../../required-modules.html' + hash);
-
-	// wire resolver
-	doh.registerUrl('wire-resolver', '../../wire-resolver1.html' + hash);
-	doh.registerUrl('wire-factory', '../../wire-factory1.html' + hash);
-
-	// Facets
-
-	// Base
-	doh.registerUrl('init-facet', '../../init.html' + hash);
-	doh.registerUrl('ready-facet', '../../ready.html' + hash);
-	doh.registerUrl('destroy-facet', '../../destroy.html' + hash);
-
-	// Factories
-
-	// literal
-	doh.registerUrl('literal-factory', '../../literal.html' + hash);
-
 	// wire/dom
 	doh.registerUrl('dom-resolver', '../../dom.html' + hash);
 
 	// wire/dom/render
 	doh.registerUrl('dom-render', '../../dom-render.html' + hash);
-
-	// wire/aop
-	doh.registerUrl('decorate1', '../../wire/aop/decorate1.html' + hash);
-	doh.registerUrl('introduce1', '../../wire/aop/introduce1.html' + hash);
-	doh.registerUrl('aop-weaving', '../../wire/aop/weave1.html' + hash);
 
 	// wire/on
 	doh.registerUrl('wire/on', '../../on.html' + hash);

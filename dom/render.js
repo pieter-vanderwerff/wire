@@ -14,7 +14,7 @@
 define(['./../lib/dom/base', 'when'], function (base, when) {
 
 	var parentTypes, parseTemplateRx, getFirstTagNameRx, isPlainTagNameRx,
-		undef;
+		pluginInstance, undef;
 
 	// elements that could be used as root nodes and their natural parent type
 	parentTypes = {
@@ -42,7 +42,6 @@ define(['./../lib/dom/base', 'when'], function (base, when) {
 	 * @param template {String} html template
 	 * @param hashmap {Object} string replacements hash
 	 * @param optRefNode {HTMLElement} node to replace with root node of rendered template
-	 * @param optCss {Object} unused
 	 * @returns {HTMLElement}
 	 */
 	function render (template, hashmap, optRefNode /*, optCss */) {
@@ -67,15 +66,17 @@ define(['./../lib/dom/base', 'when'], function (base, when) {
 		return node;
 	}
 
-	render.wire$plugin = function (/*ready, destroyed, options*/) {
-		return {
-			factories: {
-				render: domRenderFactory
-			},
-			proxies: [
-				base.proxyNode
-			]
-		};
+	pluginInstance = {
+		factories: {
+			render: domRenderFactory
+		},
+		proxies: [
+			base.proxyNode
+		]
+	};
+
+	render.wire$plugin = function (/* options */) {
+		return pluginInstance;
 	};
 
 	/**
