@@ -77,7 +77,7 @@ define( function() {
 				load.error(new Error('rjs returned no data for "' + resourceId + '", cannot process spec'));
 			}
 
-			dependencies = processSpec(spec);
+			dependencies = processSpec(spec, resourceId);
 
 			specCache[ resourceId ] = {
 				dependencies: dependencies.runtime,
@@ -91,7 +91,7 @@ define( function() {
 		// For each spec id, add the spec itself as a dependency, and then
 		// scan the spec contents to find all modules that it needs (e.g.
 		// "module", "create", "spec" and "wire")
-		function processSpec(spec) {
+		function processSpec(spec, resourceId) {
 			var runtime_deps, build_deps;
 
 			runtime_deps = [];
@@ -134,8 +134,19 @@ define( function() {
 			}
 
 			function addDependency(moduleId) {
-				runtime_deps.push(moduleId);
-				build_deps.push(moduleId);
+				var mod = moduleId;
+                if (moduleId.indexOf('./') === 0) {
+                    // relative path, assume its relative to spec we're loading (resourceId)
+                    var split = resourceId.split('/');
+                    // last element is the spec name, take it out
+                    split.pop();
+                    // remove ./ and join two together
+                    var moduleIdWithoutDotSlash = moduleId.slice(2);
+                    split.push(moduleIdWithoutDotSlash);
+                    mod = split.join('/');
+                }
+                runtime_deps.push(mod);
+                build_deps.push(mod);
 			}
 
 			function addChildSpec(moduleId) {
@@ -187,7 +198,7 @@ define( function() {
 	}
 
 	function ensureExtension(id, ext) {
-		return id.lastIndexOf('.') <= id.lastIndexOf('/')
+		return id.lastIndexOf('.js') <= id.lastIndexOf('/')
 			? id + '.' + ext
 			: id;
 	}
