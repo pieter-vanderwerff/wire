@@ -135,18 +135,18 @@ define( function() {
 
 			function addDependency(moduleId) {
 				var mod = moduleId;
-                if (moduleId.indexOf('./') === 0) {
-                    // relative path, assume its relative to spec we're loading (resourceId)
-                    var split = resourceId.split('/');
-                    // last element is the spec name, take it out
-                    split.pop();
-                    // remove ./ and join two together
-                    var moduleIdWithoutDotSlash = moduleId.slice(2);
-                    split.push(moduleIdWithoutDotSlash);
-                    mod = split.join('/');
-                }
-                runtime_deps.push(mod);
-                build_deps.push(mod);
+				if ( moduleId.indexOf( './' ) === 0 ) {
+					// relative path, assume its relative to spec we're loading (resourceId)
+					var split = resourceId.split( '/' );
+					// last element is the spec name, take it out
+					split.pop();
+					// remove ./ and join two together
+					var moduleIdWithoutDotSlash = moduleId.slice( 2 );
+					split.push( moduleIdWithoutDotSlash );
+					mod = split.join( '/' );
+				}
+				runtime_deps.push( mod );
+				build_deps.push( mod );
 			}
 
 			function addChildSpec(moduleId) {
@@ -188,7 +188,7 @@ define( function() {
 			spec = specCache[resourceId];
 
 			if (!spec) {
-				throw new Error('Spec of "' + resourceId + '" was not prevously processed');
+				throw new Error('Spec of "' + resourceId + '" was not previously processed');
 			}
 
 			getFile(spec.path, function(contents) {
