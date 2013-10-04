@@ -61,7 +61,7 @@ define( function() {
 		}
 
 		// get all the specs
-		file_path = ensureExtension(require.toUrl(resourceId), 'js');
+		file_path = ensureExtension(require.toUrl(resourceId), '.js');
 
 		getFile(file_path, function (contents) {
 			var spec, dependencies;
@@ -198,8 +198,8 @@ define( function() {
 	}
 
 	function ensureExtension(id, ext) {
-		return id.lastIndexOf('.js') <= id.lastIndexOf('/')
-			? id + '.' + ext
+		return id.lastIndexOf(ext) <= id.lastIndexOf('/')
+			? id + ext
 			: id;
 	}
 
