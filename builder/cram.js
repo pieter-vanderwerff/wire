@@ -11,15 +11,23 @@
  * http://www.opensource.org/licenses/mit-license.php
  */
 (function(define) {
-define(function() {
+define(function(require) {
 
-	var defaultModuleRegex, replaceIdsRegex, removeCommentsRx;
+	var when, unfold, mid, defaultModuleRegex, defaultSpecRegex, replaceIdsRegex,
+		removeCommentsRx, splitSpecsRegex;
+
+	when = require('when');
+	unfold = require('when/unfold');
+	mid = require('../lib/loader/moduleId');
+
 	// default dependency regex
 	defaultModuleRegex = /\.(module|create)$/;
+	defaultSpecRegex = /\.(wire\.spec|wire)$/;
 	// adapted from cram's scan function:
 	//replaceIdsRegex = /(define)\s*\(\s*(?:\s*["']([^"']*)["']\s*,)?(?:\s*\[([^\]]+)\]\s*,)?\s*(function)?\s*(?:\(([^)]*)\))?/g;
 	replaceIdsRegex = /(define)\s*\(\s*(?:\s*["']([^"']*)["']\s*,)?(?:\s*\[([^\]]*)\]\s*,)?/;
 	removeCommentsRx = /\/\*[\s\S]*?\*\/|\/\/.*?[\n\r]/g;
+	splitSpecsRegex = /\s*,\s*/;
 
 	return {
 		normalize: normalize,
@@ -32,12 +40,13 @@ define(function() {
 
 	function compile(wireId, resourceId, require, io, config) {
 		// Track all modules seen in wire spec, so we only include them once
-		var specIds, defines, remaining, seenModules, childSpecRegex,
-			moduleRegex, countdown;
+		var specIds, defines, seenModules, childSpecRegex,
+			moduleRegex;
 
 		defines = [];
 		seenModules = {};
 		moduleRegex = defaultModuleRegex;
+		childSpecRegex = defaultSpecRegex;
 
 		// Get config values
 		if(config) {
@@ -47,114 +56,163 @@ define(function() {
 
 		// Grab the spec module id, *or comma separated list of spec module ids*
 		// Split in case it's a comma separated list of spec ids
-		specIds = resourceId.split(',');
-		remaining = specIds.length;
+		specIds = resourceId.split(splitSpecsRegex);
 
-		// get all the specs
-		countdown = createCountdown(remaining, processSpec, null, io.error);
-		specIds.forEach(function(id) {
-			require(
-				[id],
-				function (spec) { countdown(spec, id); },
-				io.error
-			);
-		});
+		return when.map(specIds, function(specId) {
+			return processSpec(specId);
+		}).then(write, io.error);
 
 		// For each spec id, add the spec itself as a dependency, and then
 		// scan the spec contents to find all modules that it needs (e.g.
 		// "module" and "create")
-		function processSpec(spec, specId) {
-			var dependencies;
+		function processSpec(specId) {
+			var dependencies, ids;
 
 			dependencies = [];
+			ids = [specId];
 
-			addDependency(wireId);
-			scanObj(spec);
-			generateDefine(specId, dependencies);
+			_addDep(wireId);
 
-			function scanObj(obj, path) {
-				// Scan all keys.  This might be the spec itself, or any sub-object-literal
-				// in the spec.
-				for (var name in obj) {
-					scanItem(obj[name], createPath(path, name));
+			return unfold(fetchNextSpec, endOfList, scanSpec, ids)
+				.then(function() {
+					return generateDefine(specId, dependencies);
 				}
+			);
+
+			function fetchNextSpec() {
+				var id = ids.shift();
+				return when.promise(function(resolve, reject) {
+					require(
+						[id],
+						function(spec) { resolve([{ spec: spec, id: id }, ids]); },
+						reject
+					);
+				});
 			}
 
-			function scanItem(it, path) {
-				// Determine the kind of thing we're looking at
-				// 1. If it's a string, and the key is module or create, then assume it
-				//    is a moduleId, and add it as a dependency.
-				// 2. If it's an object or an array, scan it recursively
-				if (isDep(path) && typeof it === 'string') {
-					// Get module def
-					addDependency(it);
-
-				} else if (isStrictlyObject(it)) {
-					// Descend into subscope
-					scanObj(it, path);
-
-				} else if (Array.isArray(it)) {
-					// Descend into array
-					var arrayPath = path + '[]';
-					it.forEach(function(arrayItem) {
-						scanItem(arrayItem, arrayPath);
-					});
-				}
-			}
-
-			function addDependency(moduleId) {
+			function _addDep(moduleId) {
 				if(!(moduleId in seenModules)) {
 					dependencies.push(moduleId);
+					seenModules[moduleId] = moduleId;
 				}
 			}
+
+			function scanSpec(specDescriptor) {
+				var spec = specDescriptor.spec;
+
+				scanPlugins(spec);
+				scanObj(spec);
+
+				function resolveId(moduleId) {
+					return mid.resolve(specDescriptor.id, moduleId)
+				}
+
+				function scanObj(obj, path) {
+					// Scan all keys.  This might be the spec itself,
+					// or any sub-object-literal in the spec.
+					for (var name in obj) {
+						scanItem(obj[name], createPath(path, name));
+					}
+				}
+
+				function scanItem(it, path) {
+					// Determine the kind of thing we're looking at
+					// 1. If it's a string, and the key is module or create, then assume it
+					//    is a moduleId, and add it as a dependency.
+					// 2. If it's an object or an array, scan it recursively
+					// 3. If it's a wire spec, add it to the list of spec ids
+					if (isSpec(path) && typeof it === 'string') {
+						addSpec(it);
+
+					} else if (isDep(path) && typeof it === 'string') {
+						// Get module def
+						addDep(it);
+
+					} else if (isStrictlyObject(it)) {
+						// Descend into subscope
+						scanObj(it, path);
+
+					} else if (Array.isArray(it)) {
+						// Descend into array
+						var arrayPath = path + '[]';
+						it.forEach(function(arrayItem) {
+							scanItem(arrayItem, arrayPath);
+						});
+					}
+				}
+
+				function scanPlugins(spec) {
+					var plugins = spec.$plugins || spec.plugins;
+
+					if(Array.isArray(plugins)) {
+						plugins.forEach(addPlugin);
+					} else if(typeof plugins === 'object') {
+						Object.keys(plugins).forEach(function(key) {
+							addPlugin(plugins[key]);
+						});
+					}
+				}
+
+				function addPlugin(plugin) {
+					if(typeof plugin === 'string') {
+						addDep(plugin);
+					} else if(typeof plugin === 'object' && plugin.module) {
+						addDep(plugin.module);
+					}
+				}
+
+				function addDep(moduleId) {
+					_addDep(resolveId(moduleId));
+				}
+
+				function addSpec(specId) {
+					specId = resolveId(specId);
+					if(!(specId in seenModules)) {
+						ids.push(specId);
+					}
+					_addDep(specId);
+				}
+
+			}
+
 		}
 
 		function generateDefine(specId, dependencies) {
-			var buffer;
+			var dfd, buffer;
+
+			dfd = when.defer();
 
 			io.read(ensureExtension(specId, 'js'), function(specText) {
 				buffer = injectIds(specText, specId, dependencies);
 
 				defines.push(buffer);
+				dfd.resolve();
 
-				if(!--remaining) {
-					done();
-				}
-			}, io.error);
+			}, dfd.reject);
+
+			return dfd.promise;
 		}
 
-		function done() {
-			io.write(defines.join('\n'));
+		function write() {
+			// protect against prior code that may have omitted a semi-colon
+			io.write('\n;' + defines.join('\n'));
 		}
 
 		function isDep(path) {
 			return moduleRegex.test(path);
 		}
 
-		function createPath(path, name) {
-			return path ? (path + '.' + name) : name
+		function isSpec(path) {
+			return childSpecRegex.test(path);
 		}
+	}
+
+	function createPath(path, name) {
+		return path ? (path + '.' + name) : name
 	}
 
 	function isStrictlyObject(it) {
 		return (it && Object.prototype.toString.call(it) == '[object Object]');
-	}
-
-	function createCountdown(howMany, each, done, fail) {
-		return function() {
-			var result;
-			try {
-				if(--howMany >= 0) result = each.apply(this, arguments);
-				if(howMany == 0 && done) done();
-				return result;
-			} catch(ex) {
-				error(ex);
-			}
-		};
-		function error(ex) {
-			howMany = 0;
-			if(fail) fail(ex);
-		}
 	}
 
 	function ensureExtension(id, ext) {
@@ -181,5 +239,9 @@ define(function() {
 		return '"' + id + '"';
 	}
 
+	function endOfList(ids) {
+		return !ids.length;
+	}
+
 });
-}(typeof define === 'function' ? define : function(factory) { module.exports = factory(); }));
+}(typeof define === 'function' && define.amd ? define : function(factory) { module.exports = factory(require); }));

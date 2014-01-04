@@ -1,11 +1,11 @@
 # Using wire.js
 
-1. [As a Module](#module)
+1. [As a module](#module)
 	1. [AMD](#amd)
 	1. [CommonJS](#commonjs)
-1. [As an AMD Plugin](#amd-plugin)
-1. [As a Factory](#factory)
-1. [By Injecting wire](#injecting-wire)
+1. [As an AMD plugin](#amd-plugin)
+1. [As a factory](#factory)
+1. [By injecting wire](#injecting-wire)
 
 ## Module
 
@@ -41,9 +41,9 @@ Similarly, once you've installed wire into your CommonJS environment, simply loa
 var wire = require('wire');
 ```
 
-## AMD Plugin
+## AMD plugin
 
-Wire can be used as an AMD plugin in any AMD loader that supports the [AMD plugin API](https://github.com/amdjs/amdjs-api/wiki/Loader-Plugins), for example: [curl](https://github.com/cujojs/curl) [RequireJS](http://requirejs.org), and [Dojo](http://dojotoolkit.org).  This can be a very convenient way to bootstrap a front-end application.
+Wire can be used as an AMD plugin in any AMD loader that supports the [AMD plugin API](https://github.com/amdjs/amdjs-api/wiki/Loader-Plugins), for example: [curl](https://github.com/cujojs/curl), [RequireJS](http://requirejs.org), and [Dojo](http://dojotoolkit.org).  This can be a very convenient way to bootstrap a front-end application.
 
 Once you've installed wire into your AMD environment and configured your loader:
 
@@ -51,6 +51,8 @@ Once you've installed wire into your AMD environment and configured your loader:
 // Assume app/main is the main wire spec that bootstraps the application
 curl(['wire!app/main']);
 ```
+
+You should concatenate all the modules of your app before deploying it to production.  Wire's AMD plugin supports AMD bundling via cujoJS's [cram](http://know.cujojs.com/downloads#alacarte).  Other people have reported success using Pieter Vanderwerff's [wire-rjs plugin](https://github.com/pieter-vanderwerff/wire/blob/rjs-build/builder/rjs.js), which should be placed in the wire/builder folder prior to running rjs.
 
 For more examples of using wire as an AMD plugin to bootstrap applications, see the [Example Apps](introduction.md#example-apps)
 

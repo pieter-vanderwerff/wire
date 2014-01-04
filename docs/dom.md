@@ -3,9 +3,8 @@
 1. [Querying the DOM](#querying-the-dom)
 1. [Cloning DOM nodes](#cloning-dom-nodes)
 1. [Inserting DOM nodes](#inserting-dom-nodes)
-1. [Modifying CSS classes](#modifying-css-classes)
 1. [Connecting DOM events](#connecting-dom-events)
-1. [Rendering DOM elements](#rendering-dom-elements)
+1. [Rendering DOM nodes](#rendering-dom-nodes)
 	1. [Creating DOM components](#creating-dom-components)
 1. [Notes on DOMReady](#notes-on-domready)
 
@@ -19,7 +18,7 @@ For simplicity, we will refer to the entire set of these plugins as wire/*/dom, 
 
 The wire/jquery/dom and wire/dojo/dom plugins support the same browsers as their underlying library.  So, for instance, if you are using jQuery 1.8.0, you can expect wire/jquery/dom to work with IE6+ and the current version of all other major browsers.
 
-The wire/sizzle plugin similarly supports the same browsers as Sizzle.  (Sizzle is the query engine used by jQuery.)
+The wire/sizzle plugin similarly supports the same browsers as Sizzle.  (Sizzle is the query engine used by jQuery and also supports IE6+.)
 
 wire/dom relies on `querySelectorAll` for some features.  Therefore, some features don't work in IE6-7.  In addition, IE8 doesn't support many CSS3 selectors.  You should probably only use wire/dom in production if you only need to support fairly recent versions of the major browsers.  Use wire/sizzle otherwise.
 
@@ -37,6 +36,21 @@ mainContainer: { $ref: 'id!main' }
 
 `dom!` is an alias for `id!`
 
+The `id!` resolver may be [injected](concepts.md#dependency-inversion) into your components.  Simply omit the id and wire will provide a function instead.  This function works identically to the browser's `document.getElementById(id)`.
+
+```js
+myComponent: {
+	create: 'MyComponent',
+	properties: {
+		// Inject a function that resolves dom nodes by id.
+		byId: { $ref: 'id!' }
+	}
+}
+
+// inside MyComponent, grab the element with the id "header"
+var nodes = this.byId('header');
+```
+
 ### `all!` (`dom.all!`, `dom.query!`)
 
 The `all!` resolver is wire's way to find nodes by CSS selector.  It's just like `document.querySelectorAll()` -- or `$()` if you're familiar with jQuery.
@@ -49,7 +63,23 @@ myClickables: { $ref: 'all!button.clickme, input[type=checkbox]' }
 
 `dom.all!` and `dom.query!` are both aliases for `all!`.
 
-> Note: There's no guarantee that the list of elements returned from `all!` will be a NodeList or an array.  It could be either, depending on the wire/*/dom plugin used or the browser.  You should probably assume that the list returned is array-like and convert it to an array like this:
+The `all!` resolver may be [injected](concepts.md#dependency-inversion) into your components.  Simply omit the css selector and wire will provide a function that behaves like `document.querySelectorAll(selector)`.  The function takes a CSS selector and an optional node to query under ("rootNode") and returns an array of dom nodes or a NodeList.
+
+```js
+myComponent: {
+	create: 'MyComponent',
+	properties: {
+		// Inject a function that find nodes by css selector.
+		// function (selector, rootNode) { return arrayOrNodelist; }
+		querySelectorAll: { $ref: 'all!' }
+	}
+}
+
+// inside MyComponent, grab all <video> elements
+var nodes = this.querySelectorAll('video');
+```
+
+Note: There's no guarantee that the list of elements returned from `all!` will be a NodeList or an array.  It could be either, depending on the wire/*/dom plugin used or the browser.  You should probably assume that the list returned is array-like and convert it to an array like this:
 
 ```js
 var nodeArray = Array.prototype.slice.call(nodeList);
@@ -65,9 +95,48 @@ deepNodeInMyView: { $ref: 'first!.my-view form.ship-to label.first-name' }
 
 `dom.first!` is an alias for `first!`
 
+The `first!` resolver may be [injected](concepts.md#dependency-inversion) into your components.  Simply omit the css selector and wire will provide a function that behaves like `document.querySelector(selector)`.  The function takes a CSS selector and an optional node to query under ("rootNode") and returns a dom node (or null if a node does not match the selector).
+
+```js
+myComponent: {
+	create: 'MyComponent',
+	properties: {
+		// Inject a function that find a node by css selector.
+		// function (selector, rootNode) { return node; }
+		querySelector: { $ref: 'first!' }
+	}
+}
+
+// inside MyComponent, grab the first <video> element with the class "intro"
+var nodes = this.querySelector('video.intro');
+```
+
+### CSS Selectors and root nodes
+
+Most of the time, you'll want to scope the CSS selector query to a particular fragment of the document.  You can specify a root node for the selector query by using the `at` option.  For instance, the following spec snippet will gather all of the buttons with a "clickme" class under the node with the id "header".
+
+```js
+myScopedClickables: { $ref: 'all!button.clickme', at: { $ref: 'id!header' } }
+```
+
+If the root node is already declared as a component in the spec (or a parent spec), you may skip the `$ref` notation and simply specify a string:
+
+
+```js
+header: { $ref: 'id!header' },
+myScopedClickables: { $ref: 'all!button.clickme', at: 'header' }
+```
+
+Note: The W3C spec indicates that selector queries should search *under* the specified root node.  This means that queries can *never match the root node*.  For instance, the following wire snippet will match exactly zero nodes in a well-formed document:
+
+```js
+// find all nodes with an id of "footer" under a node with the id "footer"
+thisWillBeEmpty: { $ref: 'all!#footer', at: { $ref: 'id!footer' } }
+```
+
 ### `element` factory
 
-The `dom!` reference resolver is the preferred way to grab a reference to a single DOM node.  However, if you plan to use [wire facets](concepts.md#references) on the DOM node, a reference resolver won't work.  Facets only run on components that are created using a [factory](concepts.md#references).  Once in a while, it's handy to use facets on DOM nodes that are already in the document.  For this reason, there's the `element` wire factory.  Here's it is in action:
+The `dom!` reference resolver is the preferred way to grab a reference to a single DOM node.  However, if you plan to use [wire facets](concepts.md#references) on the DOM node, a reference resolver won't work.  Facets only run on components that are created using a [factory](concepts.md#factories).  Once in a while, it's handy to use facets on DOM nodes that are already in the document.  For this reason, there's the `element` wire factory.  Here's it is in action:
 
 ```js
 {
@@ -81,7 +150,7 @@ The `dom!` reference resolver is the preferred way to grab a reference to a sing
 
 # Cloning DOM nodes
 
-The clone [factory](concepts.md#factories) is designed to clone Javascript object, but also works with DOM nodes. It's as simple as this:
+The clone [factory](concepts.md#factories) is designed to clone Javascript objects, but also works with DOM nodes. It's as simple as this:
 
 ```js
 clonedButton: { clone: { $ref: 'id!orig-button' } }
@@ -89,7 +158,7 @@ clonedButton: { clone: { $ref: 'id!orig-button' } }
 
 # Inserting DOM nodes
 
-Once you have a node as a component using either the [`element` factory](#element-factory), [`clone` factory](#Cloning-DOM-nodes), or [`render` factory](#Rendering-DOM-nodes), you can use the `insert` facet.
+Once you have a node as a component using either the [`element` factory](#element-factory), [`clone` factory](#cloning-dom-nodes), or [`render` factory](#rendering-dom-nodes), you can use the `insert` facet.
 
 The `insert` facet executes during the [initialize phase](concepts.md#component-lifecycle) and takes a single option, which can be any of the following:
 
@@ -99,7 +168,7 @@ The `insert` facet executes during the [initialize phase](concepts.md#component-
 * `before` -- DOM node is inserted before a reference node
 * `at` -- the DOM node replaces the entire set of child nodes of a reference element
 
-The reference node can be provided as the name of a component or as a reference using one of wire/*/dom reference resolvers.
+The reference node can be provided as the name of a component (string) or as a reference using one of wire/*/dom reference resolvers.
 
 A common use case for `insert` is moving a node:
 
@@ -151,10 +220,6 @@ The `insert` facet can also be used to insert a DOM node into multiple places at
 
 As the example suggests, the element is cloned as many times as needed to be inserted into each of the reference elements.  Each element with the class name "adopter" will have an element with the class name "adoptee" as its first child.  After cloning and inserting, the wire component refers to the original "adoptee" element.  This element will have been inserted in the first "adopter" element found in the document.  All other "adopter" elements will have a clone of the original as their first child.
 
-# Modifying CSS classes
-
-TODO
-
 # Connecting DOM events
 
 See the [DOM events](./connections.md#dom-events) section of [Connections](./connections.md) for information about adding event listeners to DOM nodes.
@@ -163,7 +228,7 @@ See the [DOM events](./connections.md#dom-events) section of [Connections](./con
 
 ## `render` factory
 
-Wire includes a DOM rendering plugin, wire/dom/render that exposes a wire factory.  The `render` factory creates a DOM fragment from a logic-less HTML template.  You may specify an accompanying CSS file, an i18n string bundle, and a DOM element onto which to merge the rendered DOM fragment.  See the [Creating DOM components](#Creating-DOM-components) section for more information about these advanced options.  To place the rendered DOM fragment into the document, you can also use the [`insert` facet](#inserting-dom-nodes).
+Wire includes a DOM rendering plugin, wire/dom/render that exposes a wire factory.  The `render` factory creates a DOM fragment from a logic-less HTML template.  You may specify an accompanying CSS file, an i18n string bundle, and a DOM element onto which to merge the rendered DOM fragment.  See the [Creating DOM components](#creating-dom-components) section for more information about these advanced options.  To place the rendered DOM fragment into the document, you can also use the [`insert` facet](#inserting-dom-nodes).
 
 The `render` factory can render a DOM fragment from a template defined by a string or an AMD text module.  This DOM fragment must be rooted at a single node.  In other words, there can only be one element at the top level of the HTML.  This is valid:
 
@@ -213,7 +278,7 @@ You may also render a single node by specifying the element name.  Here are some
 	p2: { render: { template: 'p' } },
 
 	// include the wire/dom/render plugin to use the render facet
-	plugins: [
+	$plugins: [
 		{ module: 'wire/dom/render' }
 	]
 }
@@ -263,13 +328,13 @@ myView: {
 
 ### Why logic-less templates?
 
-We include a logic-less template engine mainly for better separation of concerns, but also for better [encapsulation, reuse, and maintainability](http://www.cs.usfca.edu/~parrt/papers/mvc.templates.pdf Enforcing Strict Model-View Separation in Template Engines). Most of the use cases for using logic in templates fall into the following categories:
+We include a logic-less template engine mainly for better separation of concerns, but also for better [encapsulation, reuse, and maintainability](http://www.cs.usfca.edu/~parrt/papers/mvc.templates.pdf "Enforcing Strict Model-View Separation in Template Engines"). Most of the use cases for using logic in templates fall into the following categories:
 
 * conditional visibility of sub-views
 * creation of a collection of sub-views in a loop
 * transformation or formatting of data
 
-Conditional visibility can often be better solved by toggling CSS state classes at the top element of a view.  [wire/dom/transform](#modifying-css-classes) has several helper functions that can be easily composed into your wire specs.
+Conditional visibility can often be better solved by toggling CSS state classes at the top element of a view.  `wire/dom/transform` has several helper functions that can be easily composed into your wire specs.
 
 Creating several sub-views in a loop is a sure sign that your view is data-driven.  Consider using a data-binding library, such as [cola.js](https://github.com/cujojs/cola).  Similarly, data formatting can typically be handled more elegantly in a wire spec than in a template language.  You could easily use [Transform Connections](functions.md#transform-connections) instead.
 

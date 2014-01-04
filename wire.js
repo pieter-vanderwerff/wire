@@ -1,4 +1,4 @@
-/** @license MIT License (c) copyright B Cavalier & J Hann */
+/** @license MIT License (c) copyright 2011-2013 original author or authors */
 
 /*jshint sub:true*/
 
@@ -6,19 +6,21 @@
  * wire
  * Javascript IOC Container
  *
- * wire is part of the cujo.js family of libraries (http://cujojs.com/)
+ * wire is part of the cujoJS family of libraries (http://cujojs.com/)
  *
  * Licensed under the MIT License at:
  * http://www.opensource.org/licenses/mit-license.php
  *
- * @version 0.9.2
+ * @author Brian Cavalier
+ * @author John Hann
+ * @version 0.10.3
  */
 (function(rootSpec, define){ 'use strict';
 define(function(require) {
 
 	var createContext, rootContext, rootOptions;
 
-	wire.version = '0.9.2';
+	wire.version = '0.10.3';
 
 	createContext = require('./lib/context');
 
@@ -61,21 +63,25 @@ define(function(require) {
 	/**
 	 * AMD Loader plugin API
 	 * @param name {String} spec module id, or comma-separated list of module ids
-	 * @param require {Function} loader-provide local require function
-	 * @param callback {Function} callback to call when wiring is completed. May have
-	 *  and error property that a function to call to inform the AMD loader of an error.
-	 *  See here: https://groups.google.com/forum/?fromgroups#!topic/amd-implement/u0f161drdJA
+	 * @param require {Function} loader-provided local require function
+	 * @param done {Function} loader-provided callback to call when wiring
+	 *  is completed. May have and error property that a function to call to
+	 *  inform the AMD loader of an error.
+	 *  See here:
+	 *  https://groups.google.com/forum/?fromgroups#!topic/amd-implement/u0f161drdJA
 	 */
-	wire.load = function amdLoad(name, require, callback /*, config */) {
+	wire.load = function amdLoad(name, require, done /*, config */) {
 		// If it's a string, try to split on ',' since it could be a comma-separated
 		// list of spec module ids
-		var errback = callback.error || function(e) {
+		wire(name.split(','), { require: require })
+			.then(done, done.error)
+			.otherwise(crash);
+
+		function crash(e) {
 			// Throw uncatchable exception for loaders that don't support
 			// AMD error handling.  This will propagate up to the host environment
 			setTimeout(function() { throw e; }, 0);
-		};
-
-		wire(name.split(','), { require: require }).then(callback, errback);
+		}
 	};
 
 	/**

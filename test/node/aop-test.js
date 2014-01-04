@@ -13,12 +13,12 @@ other = {};
 buster.testCase('aop', {
 
 	'decorate': {
-		'should decorate in order': function(done) {
+		'should decorate in order': function() {
 			function decorator(target, value) {
 				target.value += value;
 			}
 
-			wire({
+			return wire({
 				plugins: [aopPlugin],
 				mydecorator1: decorator,
 				mydecorator2: decorator,
@@ -34,17 +34,17 @@ buster.testCase('aop', {
 					assert.equals(context.test.value, 'abc');
 				},
 				fail
-			).then(done, done);
+			);
 		}
 	},
 
 	'advice': {
 
 		'before': {
-			'should execute function before method': function(done) {
+			'should execute function before method': function() {
 				var spy = this.spy();
 
-				wire({
+				return wire({
 					plugins: [aopPlugin],
 					target: {
 						literal: {
@@ -63,13 +63,57 @@ buster.testCase('aop', {
 						assert.calledOnceWith(spy, sentinel);
 					},
 					fail
-				).then(done, done);
+				);
+			},
+
+			'should fail when self advised method is missing': function() {
+				var spy = this.spy();
+
+				return wire({
+					plugins: [aopPlugin],
+					target: {
+						literal: {},
+						before: {
+							method: 'handler.test'
+						}
+					},
+					handler: {
+						test: spy
+					}
+				}).then(
+					fail,
+					function(e) {
+						assert(e);
+					}
+				);
+			},
+
+			'should fail when other advised method is missing': function() {
+				var spy = this.spy();
+
+				return wire({
+					plugins: [aopPlugin],
+					target: {
+						literal: {},
+						before: {
+							'handler.test': 'method'
+						}
+					},
+					handler: {
+						test: spy
+					}
+				}).then(
+					fail,
+					function(e) {
+						assert(e);
+					}
+				);
 			}
 		},
 
 		'around': {
 
-			'should execute function around method': function(done) {
+			'should execute function around method': function() {
 				var beforeSpy, afterSpy;
 
 				beforeSpy = this.spy();
@@ -80,7 +124,7 @@ buster.testCase('aop', {
 					afterSpy(joinpoint.proceed());
 				}
 
-				wire({
+				return wire({
 					plugins: [aopPlugin],
 					target: {
 						literal: {
@@ -100,17 +144,17 @@ buster.testCase('aop', {
 						assert.calledOnceWith(afterSpy, sentinel);
 					},
 					fail
-				).then(done, done);
+				);
 			}
 
 		},
 
 		'afterReturning': {
 
-			'should execute function after method returns': function(done) {
+			'should execute function after method returns': function() {
 				var spy = this.spy();
 
-				wire({
+				return wire({
 					plugins: [aopPlugin],
 					target: {
 						literal: {
@@ -133,13 +177,13 @@ buster.testCase('aop', {
 						assert.calledOnceWith(spy, sentinel);
 					},
 					fail
-				).then(done, done);
+				);
 			},
 
-			'should not execute function after method throws': function(done) {
+			'should not execute function after method throws': function() {
 				var spy = this.spy();
 
-				wire({
+				return wire({
 					plugins: [aopPlugin],
 					target: {
 						literal: {
@@ -163,16 +207,16 @@ buster.testCase('aop', {
 						refute.called(spy);
 					},
 					fail
-				).then(done, done);
+				);
 			}
 		},
 
 		'afterThrowing': {
 
-			'should execute function after method throws': function(done) {
+			'should execute function after method throws': function() {
 				var spy = this.spy();
 
-				wire({
+				return wire({
 					plugins: [aopPlugin],
 					target: {
 						literal: {
@@ -195,13 +239,13 @@ buster.testCase('aop', {
 					function() {
 						assert.calledOnceWith(spy, sentinel);
 					}
-				).then(done, done);
+				);
 			},
 
-			'should not execute function after method returns': function(done) {
+			'should not execute function after method returns': function() {
 				var spy = this.spy();
 
-				wire({
+				return wire({
 					plugins: [aopPlugin],
 					target: {
 						literal: {
@@ -220,16 +264,16 @@ buster.testCase('aop', {
 						refute.called(spy);
 					},
 					fail
-				).then(done, done);
+				);
 			}
 		},
 
 		'after': {
 
-			'should execute function after method returns': function(done) {
+			'should execute function after method returns': function() {
 				var spy = this.spy();
 
-				wire({
+				return wire({
 					plugins: [aopPlugin],
 					target: {
 						literal: {
@@ -252,13 +296,13 @@ buster.testCase('aop', {
 						assert.calledOnceWith(spy, sentinel);
 					},
 					fail
-				).then(done, done);
+				);
 			},
 
-			'should execute function after method throws': function(done) {
+			'should execute function after method throws': function() {
 				var spy = this.spy();
 
-				wire({
+				return wire({
 					plugins: [aopPlugin],
 					target: {
 						literal: {
@@ -281,17 +325,17 @@ buster.testCase('aop', {
 					function() {
 						assert.calledOnceWith(spy, sentinel);
 					}
-				).then(done, done);
+				);
 			}
 		},
 
 		'that is promise-aware': {
 
 			'afterFulfilling': {
-				'should execute function after returned promise is fulfilled': function(done) {
+				'should execute function after returned promise is fulfilled': function() {
 					var spy = this.spy();
 
-					wire({
+					return wire({
 						plugins: [aopPlugin],
 						target: {
 							literal: {
@@ -314,13 +358,13 @@ buster.testCase('aop', {
 							assert.calledOnceWith(spy, sentinel);
 						},
 						fail
-					).then(done, done);
+					);
 				},
 
-				'should not execute function after returned promise is rejected': function(done) {
+				'should not execute function after returned promise is rejected': function() {
 					var spy = this.spy();
 
-					wire({
+					return wire({
 						plugins: [aopPlugin],
 						target: {
 							literal: {
@@ -343,15 +387,15 @@ buster.testCase('aop', {
 						function() {
 							refute.called(spy);
 						}
-					).then(done, done);
+					);
 				}
 			},
 
 			'afterRejecting': {
-				'should execute function after returned promise is rejected': function(done) {
+				'should execute function after returned promise is rejected': function() {
 					var spy = this.spy();
 
-					wire({
+					return wire({
 						plugins: [aopPlugin],
 						target: {
 							literal: {
@@ -374,13 +418,13 @@ buster.testCase('aop', {
 						function() {
 							assert.calledOnceWith(spy, sentinel);
 						}
-					).then(done, done);
+					);
 				},
 
-				'should not execute function after returned promise is fulfilled': function(done) {
+				'should not execute function after returned promise is fulfilled': function() {
 					var spy = this.spy();
 
-					wire({
+					return wire({
 						plugins: [aopPlugin],
 						target: {
 							literal: {
@@ -403,15 +447,15 @@ buster.testCase('aop', {
 							refute.called(spy);
 						},
 						fail
-					).then(done, done);
+					);
 				}
 			},
 
 			'after': {
-				'should execute function after returned promise is fulfilled': function(done) {
+				'should execute function after returned promise is fulfilled': function() {
 					var spy = this.spy();
 
-					wire({
+					return wire({
 						plugins: [aopPlugin],
 						target: {
 							literal: {
@@ -434,13 +478,13 @@ buster.testCase('aop', {
 							assert.calledOnceWith(spy, sentinel);
 						},
 						fail
-					).then(done, done);
+					);
 				},
 
-				'should execute function after returned promise is rejected': function(done) {
+				'should execute function after returned promise is rejected': function() {
 					var spy = this.spy();
 
-					wire({
+					return wire({
 						plugins: [aopPlugin],
 						target: {
 							literal: {
@@ -463,14 +507,14 @@ buster.testCase('aop', {
 						function() {
 							assert.calledOnceWith(spy, sentinel);
 						}
-					).then(done, done);
+					);
 				}
 			}
 		}
 	},
 
 	'weaving': {
-		'should weave aspects': function(done) {
+		'should weave aspects': function() {
 			function aspect() {
 				return {
 					pointcut:       /^doSomething$/,
@@ -495,7 +539,7 @@ buster.testCase('aop', {
 				doOneMoreThing: function() { return 0; }
 			};
 
-			wire({
+			return wire({
 				plugins: [
 					{
 						wire$plugin: aopPlugin,
@@ -528,7 +572,7 @@ buster.testCase('aop', {
 					assert.equals(t1.doOneMoreThing(), 0);
 					assert.equals(t2.doOneMoreThing(), 0);
 				}
-			).then(done, done);
+			);
 		}
 	}
 });

@@ -1,22 +1,22 @@
 # Concepts
 
-1. [General Concepts](#general-concepts)
+1. [General concepts](#general-concepts)
 	1. [Inversion of Control](#inversion-of-control)
 	1. [Dependency Inversion](#dependency-inversion)
-	1. [Application Composition](#application-composition)
-1. [Wire Concepts](#wire-concepts)
+	1. [Application composition](#application-composition)
+1. [Wire concepts](#wire-concepts)
 	1. [Wire specs](#wire-specs)
 	1. [Contexts](#contexts)
 	1. [Plugins](#plugins)
 	1. [Components](#components)
 	1. [Factories](#factories)
 	1. [Proxies](#proxies)
-	1. [Component Lifecycle](#component-lifecycle)
+	1. [Component lifecycle](#component-lifecycle)
 	1. [Facets](#facets)
 	1. [References](#references)
 	1. [Connections](#connections)
 
-# General Concepts
+# General concepts
 
 ## Inversion of Control
 
@@ -26,13 +26,13 @@ That's one of those definitions that's more useful after you already understand 
 
 If you write Javascript in a browser environment, you're already using one form of IOC.  Let's look at a simple example to compare "normal" vs. "inverted" control.
 
-### Normal Control
+### Normal control
 
 Take a simple *program*, like a shell script, that executes sequentially from beginning to end, maybe reading files, transforming the data, and then outputting the transformed data to stdout or another file.  This is the same as the concept of a "main()" in languages like C, C++, Java, etc.
 
 That's a traditional, or "normal", flow of control.  Your code is in control and makes decisions (e.g. via conditionals, loops, etc.) about what code to execute when.
 
-### Inverted Control
+### Inverted control
 
 When you write Javascript in a browser, your code will typically be structured, at some level, as a set of callback functions attached to browser events.  You won't have a "main()", in the traditional sense, but rather, you rely on the browser to invoke your callback functions at the appropriate time.  The browser is in control, and makes decisions about when to give control back to your code by invoking your callback functions.  The browser may even decide *not* to call your callbacks at all, depending on the situation.
 
@@ -50,7 +50,7 @@ This is probably a good time to go read [Martin Fowler's well known article on t
 
 *Side note*: The term IOC Container is usually a bit of a misnomer.  Most IOC Containers focus primarily on providing Dependency Inversion, and so a better name might be "Dependency Inversion Container".  Fowler mentions this as well.
 
-## Application Composition
+## Application composition
 
 Implementing application logic inside components, and composing those components together into a running application are very different activities.  Many times, however, they are done at the same time, in the same code.  That leads to tightly coupled components that can be impossible to unit test and refactor.
 
@@ -65,7 +65,7 @@ wire.js is cujo.js’s application composition layer.  It provides a well-define
 
 Components can be implemented and tested without embedding connection logic and infrastructure.  The composition and application logic can be refactored independently, many times without affecting each other at all.
 
-# Wire Concepts
+# Wire concepts
 
 ## Wire specs
 
@@ -89,7 +89,7 @@ define({
 	helloWired: {
 
 		create: {
-			module: 'app/HelloWire',
+			module: 'app/HelloWired',
 			args: { $ref: 'dom:first!.hello' }
 		},
 
@@ -98,7 +98,7 @@ define({
 		}
 	},
 
-	plugins: [
+	$plugins: [
 		{ module: 'wire/debug', trace: true },
 		{ module: 'wire/dom', $ns: 'dom' }
 	]
@@ -111,11 +111,11 @@ This simple wire spec has three top-level components:
 
 * `message` - a String
 * `helloWired` - an AMD module with module id `app/HelloWired`. In this case the module is a constructor function, which wire.js will use to create an object instance.
-* `plugins` - an Array containing one AMD module to load.  This module happens to be a wire.js plugin for referencing DOM nodes--read more on referencing below and in the [References](#references) section.
+* `$plugins` - an Array containing one AMD module to load.  This module happens to be a wire.js plugin for referencing DOM nodes--read more on referencing below and in the [References](#references) section.
 
-### References
+### Referencing other components
 
-The wire spec also contains two *references* using [JSON Referencing](http://www.sitepen.com/blog/2008/06/17/json-referencing-in-dojo/)*-like* syntax.  The first references a DOM Node by id:
+The wire spec also contains two [references](#references) using simplified JSON Referencing syntax.  The first references a DOM Node by id:
 
 ```javascript
 { $ref: 'dom!hello' }
@@ -132,7 +132,7 @@ When you feed a spec to wire.js, it will create a [context](#contexts) containin
 
 ## Contexts
 
-As the result of processing a spec, wire.js produces a **Context**.  The context is a Javascript Object that contains the all fully realized components that were specified in the wiring spec.  The context also has methods for wiring child contexts, resolving references, and destroying the context and all the objects, etc. that were created when it was wired.
+As the result of processing a spec, wire.js produces a **Context**.  The context is a Javascript Object that contains the fully realized components that were specified in the wiring spec.  The context also has methods for wiring child contexts, resolving references, and destroying the context and all the objects, etc. that were created when it was wired.
 
 ### Context example
 
@@ -146,7 +146,7 @@ define({
 	helloWired: {
 
 		create: {
-			module: 'app/HelloWire',
+			module: 'app/HelloWired',
 			args: { $ref: 'dom:first!.hello' }
 		},
 
@@ -155,7 +155,7 @@ define({
 		}
 	},
 
-	plugins: [
+	$plugins: [
 		{ module: 'wire/debug', trace: true },
 		{ module: 'wire/dom', $ns: 'dom' }
 	]
@@ -176,7 +176,7 @@ which creates the *context*, `context`, that contains fully realized components:
 
 1. `message` - a String
 2. `helloWired` - an object created from the AMD module `app/HelloWired`, whose constructor was passed a DOM node by the `wire/dom` plugin's DOM [reference resolver](#references), and whose `init()` function has been called and passed the `message` String.
-3. `plugins` - an Array containing a single wire.js plugin, `wire/dom`.
+3. `$plugins` - an Array containing a single wire.js plugin, `wire/dom`.
 
 The `wired` context has properties for the components from the wiring spec.
 
@@ -219,69 +219,39 @@ curl(['wire!hello-wired-spec'], function(context) {
 });
 ```
 
-The `childContext` will have properties for all the components in its parent `context`: `message`, `helloWired`, and `plugins`, but will also have the additional component `anotherComponent`.
+The `childContext` will have properties for all the components in its parent `context`: `message`, `helloWired`, and `$plugins`, but will also have the additional component `anotherComponent`.
 
 ## Plugins
 
-Wire.js's core DSL is very small, but can be extended by plugins.  For example, there is no builtin handling of [DOM Nodes](dom.md#querying-the-dom) or [DOM Events](dom.md#connecting-dom-events).  That functionality is provided the bundled [DOM plugins](dom.md).
+Wire.js's core DSL is very small, but can be extended by plugins.  For example, there is no builtin handling of [DOM Nodes](dom.md#querying-the-dom) or [DOM Events](dom.md#connecting-dom-events).  That functionality is provided by the bundled [DOM plugins](dom.md).
 
-Including plugins in a [wire spec](#wire-specs) is simple.  Wire scans modules for plugins, so you can simply include them in your spec using the [module factory](components.md#module).  Although it's not necessary, a good convention is to group plugins together in a plugins array:
+Including plugins in a [wire spec](#wire-specs) is simple: include plugin module IDs in the `$plugins` array:
 
 ```js
-plugins: [
-	{ module: 'wire/debug' },
-	{ module: 'wire/dom' },
-	{ module: 'wire/dom/render' },
-	{ module: 'wire/aop' }
+$plugins: [
+	'wire/debug',
+	'wire/dom',
+	'wire/dom/render',
+	'wire/aop'
 ]
 ```
 
+**NOTE:** Versions of wire.js < 0.10 allowed plugins to appear in an array named `plugins` rather than `$plugins`.  The name `plugins` is *deprecated* in 0.10.  Use the newer, preferred name: `$plugins`.
+
 ### Plugin options
 
-Plugins may have options, which can be included as properties.  For example, to turn on the `wire/debug` plugin's `trace` option:
+Plugins may have options which can be included as properties by using an object literal instead of a string module ID.  For example, to turn on the `wire/debug` plugin's `trace` option:
 
 ```js
-	plugins: [
+	$plugins: [
 		{ module: 'wire/debug', trace: true },
-		{ module: 'wire/dom' },
-		{ module: 'wire/dom/render' },
-		{ module: 'wire/aop' }
+		'wire/dom',
+		'wire/dom/render',
+		'wire/aop'
 	]
 ```
 
-### Plugin namespaces
-
-By default, all the factories and facets provided by each plugin are available *un-namespaced* within the current wire spec.  For clarity, and to avoid potential naming conflicts between plugins, you can *optionally* provide a namespace for some or all plugins in your wire specs, using the `$ns` option.
-
-When namespaced, all of the [factories](#factories), [facets](#facets), and [reference resolvers](#references) provided by the plugin must be prefixed with the namespace.
-
-The [Hello Wire example from above](#context-example) assigns the namespace `dom` to the `wire/dom` plugin, and thus uses the plugin's `first!` resolver with the namespace prefix: `dom:first!`
-
-```javascript
-define({
-	message: 'I haz been wired',
-
-	// Create an instance of the hello-wired module.
-	helloWired: {
-
-		create: {
-			module: 'app/HelloWire',
-			// Use the first! resolver with namespace prefix
-			args: { $ref: 'dom:first!.hello' }
-		},
-
-		ready: {
-			sayHello: { $ref: 'message' }
-		}
-	},
-
-	plugins: [
-		{ module: 'wire/debug', trace: true },
-		// Assign the namespace `dom` to the wire/dom plugin
-		{ module: 'wire/dom', $ns: 'dom' }
-	]
-});
-```
+For more information about using plugins, see the [Plugins documentation](plugins.md).
 
 ## Components
 
@@ -289,7 +259,7 @@ One of the main things you'll do when assembling any application, whether you're
 
 Wire.js supports a wide variety of components from simple Javascript types, to object literals and Arrays, to AMD modules.
 
-### Simple Types
+### Simple types
 
 A component can be any native Javascript type: Number, String, Boolean, Date, RegExp (via both new RegExp and literal // syntax), Array, Object literal.
 
@@ -307,7 +277,9 @@ Proxies are closely related to factories.  For each component, wire creates a pr
 
 For example, each proxy implements a simple `get()/set()` API for getting and setting its component's properties.  This allows plugins to set properties on objects where simple property assignment is not sufficient.  For example, Dojo Dijit widgets require calling their `get()` and `set()` methods.
 
-## Component Lifecycle
+[Read more about wire's Proxy API](plugins.md#proxy)
+
+## Component lifecycle
 
 Each component in a [wire spec](#wire-specs) has a well-defined *lifecycle* that is managed by wire.js.  When wire.js processes the spec to create a [context](#contexts), each component will pass through the following lifecycle stages:
 
@@ -330,7 +302,7 @@ Wire.js comes with several builtin facets, and plugins can provide additional fa
 
 ## References
 
-References allow you to reference components and other existing resources.  Wire.js uses a [JSON-referencing](http://groups.google.com/group/json-schema/browse_thread/thread/95fb4006f1f92a40)-like syntax for references, but allows for extensions to the referencing syntax via plugins, which can provide Reference Resolvers to do more sophisticated things, such as [referencing DOM nodes](./dom.md#querying-the-dom)
+References allow you to reference components and other existing resources.  Wire.js uses a simplified [JSON Referencing](http://tools.ietf.org/html/draft-pbryan-zyp-json-ref-03) syntax for references, but allows for extensions to the referencing syntax via plugins, which can provide Reference Resolvers to do more sophisticated things, such as [referencing DOM nodes](./dom.md#querying-the-dom)
 
 ### Syntax
 
@@ -352,9 +324,9 @@ For example, the [wire/dom](https://github.com/cujojs/wire/wiki/wire-dom) plugin
 { $ref: 'dom!my-node-id' }
 ```
 
-### Simple Example
+### Simple example
 
-Using references in a [wire spec](#wire-specs) is similar to using variables.  For example, if you have a component named `controller` needs a reference to another component named `view`:
+Using references in a [wire spec](#wire-specs) is similar to using variables.  For example, if you have a component named `controller` that needs a reference to another component named `view`:
 
 ```javascript
 // Create a controller instance
@@ -379,6 +351,28 @@ view: {
 ```
 
 Notice that order doesn't matter.  Even though `view` is referenced before it is declared, the reference will be resolved correctly because wire specs are *declarative*, and wire.js will handle ordering to make sure everything works out.
+
+### Injecting reference resolvers
+
+Many of wire's built-in resolvers can be [injected](#dependency-inversion) as [properties](configure.md#properties) or [constructor args](components.md#create).  This allows you to use the same reference resolution mechanism in your wire specs and your procedural code.  Each of the following built-in resolvers may be injected:
+
+- [on!](connections.md#dom-events)
+- [id!](dom.md#querying-the-dom)
+- [all!](dom.md#querying-the-dom)
+- [first!](dom.md#querying-the-dom)
+- [wire!](wire#injecting-wire)
+
+To inject a reference resolver, omit the reference identifier (the part after the "!") as in this example:
+
+```js
+controller: {
+	create: 'my/Controller',
+	properties: {
+		// inject the "first!" resolver as an abstracted document.querySelector
+		querySelector: { $ref: 'first!' }
+	}
+}
+```
 
 ## Connections
 

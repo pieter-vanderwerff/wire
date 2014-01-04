@@ -25,30 +25,24 @@
 
 	loaders = {
 		curl: {
-			script: 'test/curl/src/curl',
+			script: 'bower_components/curl/src/curl',
 			mixin: {
 				apiName: 'require',
-				pluginPath: 'curl/plugin',
 				paths: {
-					'jquery': 'test/lib/jquery'
-//                    'wire/domReady': 'test/curl/src/curl/domReady'
+					jquery: 'bower_components/jquery/jquery'
 				},
 				preloads: [
-					'poly/all',
+					'poly/es5',
 					'curl/shim/dojo16'
 				]
 			}
 		},
 		requirejs: {
-			script: 'test/requirejs/require',
+			script: 'bower_components/requirejs/require',
 			mixin: {
 				paths: {
-					'jquery': 'test/lib/jquery',
-//                    'wire/domReady': 'test/requirejs-domReady/domReady',
-					domReady: 'test/requirejs-domReady/domReady'
-				},
-				config: {
-					when: { paranoid: false }
+					jquery: 'bower_components/jquery/jquery',
+					domReady: 'bower_components/requirejs-domready/domReady'
 				}
 			}
 		}
@@ -97,16 +91,15 @@
 		loaderConfig[m] = loader.mixin[m];
 	}
 
-	addPackage({ name: 'dojo', location: 'test/lib/dojo18/dojo' });
-//	addPackage({ name: 'dijit', location: 'test/lib/dojo17/dijit', main: 'main' });
-//	addPackage({ name: 'dojo', location: 'test/lib/dojo16/dojo', main: 'lib/main-browser' });
-//    addPackage({ name: 'dijit', location: 'test/lib/dojo16/dijit', main: 'lib/main' });
-	addPackage({ name: 'sizzle', location: 'support/sizzle' });
-	addPackage({ name: 'meld', location: 'support/meld' });
-	addPackage({ name: 'when', location: 'support/when' });
-	addPackage({ name: 'poly', location: 'support/poly' });
 	// This is needed because we're running unit tests from *within* the wire dir
 	addPackage({ name: 'wire', location: '.' });
+	addPackage({ name: 'meld', location: 'bower_components/meld' });
+	addPackage({ name: 'when', location: 'bower_components/when' });
+	addPackage({ name: 'poly', location: 'bower_components/poly' });
+	addPackage({ name: 'sizzle', location: 'bower_components/sizzle' });
+	addPackage({ name: 'dojo', location: 'bower_components/dojo', main: 'main' });
+	addPackage({ name: 'dijit', location: 'bower_components/dijit' });
+	addPackage({ name: 'jquery', location: 'bower_components/jquery', main: 'jquery' });
 
 	// Other loaders may not need this
 	loaderConfig.paths[loaderName] = loaderPath;

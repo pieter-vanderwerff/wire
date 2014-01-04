@@ -10,6 +10,7 @@
 
 	// AMD
 	doh.registerUrl('amd/module', '../../amd/module.html' + hash);
+	doh.registerUrl('amd/moduleIds', '../../amd/moduleIds.html' + hash);
 	doh.registerUrl('amd/plugin', '../../amd/plugin.html' + hash);
 
 	// wire/dom
@@ -21,14 +22,11 @@
 	// wire/on
 	doh.registerUrl('wire/on', '../../on.html' + hash);
 
-	// wire/connect
-	doh.registerUrl('wire/connect', '../../connect.html' + hash);
-
 	// wire/sizzle
 	doh.registerUrl('sizzle', '../../sizzle.html' + hash);
 
 	// Dojo
-//	doh.registerUrl('wire/dojo/dom', '../../dojo/dom.html' + hash);
+	doh.registerUrl('wire/dojo/dom', '../../dojo/dom.html' + hash);
 //	doh.registerUrl('wire/dojo/dom-insert', '../../dojo/dom-insert.html' + hash);
 	doh.registerUrl('wire/dojo/on', '../../dojo/on.html' + hash);
 //	doh.registerUrl('wire/dojo/pubsub', '../../dojo/pubsub1.html' + hash);
